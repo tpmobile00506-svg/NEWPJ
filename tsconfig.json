@@ -1,0 +1,68 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@/components/*": [
+        "./frontend/components/*"
+      ],
+      "@/hooks/*": [
+        "./frontend/hooks/*"
+      ],
+      "@/lib/utils": [
+        "./shared/utils.ts"
+      ],
+      "@/lib/domain": [
+        "./shared/domain.ts"
+      ],
+      "@/lib/excel": [
+        "./frontend/lib/excel.ts"
+      ],
+      "@/lib/server": [
+        "./backend/server.ts"
+      ],
+      "@/data/*": [
+        "./backend/data/*"
+      ]
+    },
+    "types": [
+      "node",
+      "@cloudflare/workers-types"
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": [
+    "node_modules",
+    "examples"
+  ]
+}
