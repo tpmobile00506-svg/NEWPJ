@@ -24,8 +24,15 @@ export default function Workspace(){
       try {
         result = text ? JSON.parse(text) : {};
       } catch {
-        const snippet = text.replace(/<[^>]*>/g, '').trim().slice(0, 100);
-        throw new Error(`การเข้าสู่ระบบขัดข้อง (${res.status}): ${snippet || 'กรุณาตรวจสอบการตั้งค่าฐานข้อมูล DATABASE_URL'}`);
+        try {
+          const hRes = await fetch('/api/health');
+          const hData = (await hRes.json()) as Any;
+          if (hData?.tip) throw new Error(hData.tip);
+          if (hData?.dbError) throw new Error(`ฐานข้อมูลขัดข้อง: ${hData.dbError}`);
+        } catch (hErr: any) {
+          if (hErr.message && !hErr.message.includes('fetch')) throw hErr;
+        }
+        throw new Error('ระบบยังไม่สามารถติดต่อฐานข้อมูลได้ กรุณาตรวจสอบ DATABASE_URL ใน Vercel');
       }
       if (!res.ok) throw new Error(result.error || 'เข้าสู่ระบบไม่สำเร็จ');
       await reload();

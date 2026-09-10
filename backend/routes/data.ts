@@ -16,7 +16,7 @@ function fail(e: unknown) {
   if (/UNIQUE|CHECK constraint/.test(msg)) {
     return Response.json({ error: 'ข้อมูลซ้ำ หรือมีผู้อื่นแก้ไขแล้ว กรุณาโหลดข้อมูลใหม่และตรวจสอบอีกครั้ง' }, { status: 409 });
   }
-  return Response.json({ error: msg || 'เกิดข้อผิดพลาดในการประมวลผล' }, { status });
+  return Response.json({ error: msg || 'เกิดข้อผิดพลาดในการประมวลผล' }, { status: status >= 500 ? 400 : status });
 }
 
 

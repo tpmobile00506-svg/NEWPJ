@@ -4,40 +4,77 @@ import { PrismaClient, Prisma } from '../generated/prisma/client';
 import { settings } from '../config/env';
 import { ensureDatabaseReady } from './init';
 
-const connectionString = settings.databaseUrl || process.env.DATABASE_URL || '';
-const isRemote = connectionString.includes('neon.tech') ||
-                 connectionString.includes('sslmode=require') ||
-                 connectionString.includes('supabase') ||
-                 process.env.NODE_ENV === 'production';
+import { ApiError } from '../services/errors';
+
+export function getDatabaseUrl(): string {
+  let url = (process.env.DATABASE_URL || settings.databaseUrl || '').trim();
+  if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
+    url = url.slice(1, -1).trim();
+  }
+  return url;
+}
 
 const globalForDb = globalThis as unknown as {
   prisma?: PrismaClient;
   pgPool?: pg.Pool;
+  currentUrl?: string;
 };
 
-export const pool = globalForDb.pgPool ?? new pg.Pool({
-  connectionString: connectionString || undefined,
-  ssl: isRemote ? { rejectUnauthorized: false } : undefined,
-  connectionTimeoutMillis: 8000,
-});
+export function getPool(): pg.Pool {
+  const url = getDatabaseUrl();
+  if (globalForDb.pgPool && globalForDb.currentUrl === url) {
+    return globalForDb.pgPool;
+  }
+  const isRemote = url.includes('neon.tech') ||
+                   url.includes('sslmode=require') ||
+                   url.includes('supabase') ||
+                   url.includes('aws') ||
+                   (!url.includes('localhost') && !url.includes('127.0.0.1') && url.length > 0);
+
+  const pool = new pg.Pool({
+    connectionString: url || undefined,
+    ssl: isRemote ? { rejectUnauthorized: false } : undefined,
+    connectionTimeoutMillis: 5000,
+  });
+
+  globalForDb.pgPool = pool;
+  globalForDb.currentUrl = url;
+  globalForDb.prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
+  return pool;
+}
+
+export const pool = getPool();
 
 export async function checkDatabase() {
-  if (!connectionString) {
-    throw new Error('ยังไม่ได้กำหนด DATABASE_URL ใน Environment Variables บน Vercel กรุณาตรวจสอบการตั้งค่า');
+  const url = getDatabaseUrl();
+  if (!url) {
+    throw new ApiError('ยังไม่ได้กำหนด DATABASE_URL ใน Environment Variables บน Vercel กรุณานำ Connection String จาก Neon มาใส่', 400);
   }
-  await ensureDatabaseReady(pool);
+  if ((url.includes('localhost') || url.includes('127.0.0.1')) && process.env.VERCEL) {
+    throw new ApiError('DATABASE_URL บน Vercel เป็น localhost ซึ่งเซิร์ฟเวอร์ Cloud ไม่สามารถต่อได้ กรุณานำ Connection String จาก Neon มาใส่', 400);
+  }
+  try {
+    const p = getPool();
+    await ensureDatabaseReady(p);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('Database connection error:', msg);
+    throw new ApiError(`ไม่สามารถเชื่อมต่อฐานข้อมูลได้: ${msg}`, 400);
+  }
 }
 
-function getPrismaClient() {
-  return new PrismaClient({ adapter: new PrismaPg(pool) });
+function getPrismaClient(): PrismaClient {
+  getPool();
+  return globalForDb.prisma!;
 }
 
-export const prisma = globalForDb.prisma ?? getPrismaClient();
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForDb.prisma = prisma;
-  globalForDb.pgPool = pool;
-}
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrismaClient();
+    const val = (client as any)[prop];
+    return typeof val === 'function' ? val.bind(client) : val;
+  }
+});
 
 export type Transaction = Prisma.TransactionClient;
 export { Prisma };
