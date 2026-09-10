@@ -7,7 +7,32 @@ export default function Workspace(){
  const [data,setData]=useState<Any|null>(null),[error,setError]=useState(''),[auth,setAuth]=useState(false),[view,setView]=useState('registry'),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [search,setSearch]=useState(''),[branch,setBranch]=useState('all'),[condition,setCondition]=useState('all'),[category,setCategory]=useState('all'),[lifecycle,setLifecycle]=useState('active'),[page,setPage]=useState(0),[sort,setSort]=useState<{key:keyof Asset;dir:number}>({key:'createdAt',dir:-1});
  const [modal,setModal]=useState<Any|null>(null),[selected,setSelected]=useState<Asset|null>(null),[formError,setFormError]=useState(''),[revision,setRevision]=useState(0);
+ const [email, setEmail] = useState('admin@ksu.ac.th'), [password, setPassword] = useState('admin12345678'), [loggingIn, setLoggingIn] = useState(false);
  const reload=useCallback(async()=>{try{setData(await api());setError('');setAuth(false);}catch(e:any){setError(e.message);setAuth(e.status===401);}finally{setLoading(false);}},[]);
+ const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoggingIn(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const result = await res.json() as Any;
+      if (!res.ok) throw new Error(result.error || 'เข้าสู่ระบบไม่สำเร็จ');
+      await reload();
+    } catch (err: any) {
+      setError(err.message || 'เข้าสู่ระบบไม่สำเร็จ');
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+  const handleLogout = async () => {
+    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
+    setData(null);
+    setAuth(true);
+  };
  useEffect(()=>{reload();},[reload]);useEffect(()=>{setPage(0);},[search,branch,condition,category,lifecycle,view]);
  useEffect(()=>{if(data){const a=new URL(location.href).searchParams.get('asset');if(a)setSelected(data.assets.find((x:Asset)=>x.id===a)||null);}},[!!data]);
  const open=(kind:string,rest:Any={})=>{setFormError('');setModal({kind,token:crypto.randomUUID(),...rest});};
@@ -21,10 +46,35 @@ export default function Workspace(){
  const branchTotals=Object.entries(active.reduce((s:Record<string,number>,a)=>{s[a.branch]=(s[a.branch]||0)+a.totalSatang;return s;},{})).sort((a,b)=>b[1]-a[1]);
  async function exportRows(rows:Asset[]){setBusy(true);try{await exportWorkbook(rows);toast.success('ส่งออก Excel 11 คอลัมน์แล้ว');}catch(e:any){toast.error(e.message);}finally{setBusy(false);}}
  if(loading)return <div className="loading-box"><Package size={36}/><h1 className="my-6">ทะเบียนครุภัณฑ์</h1><Skeleton className="h-14 w-full mb-4"/><Skeleton className="h-40 w-full"/><p className="mt-5">กำลังเชื่อมต่อทะเบียนกลาง…</p></div>;
- if(!data)return <div className="loading-box panel"><Package size={40}/><h1 className="my-5">ระบบบริหารจัดการครุภัณฑ์</h1><p>คณะวิศวกรรมศาสตร์และเทคโนโลยีอุตสาหกรรม<br/>มหาวิทยาลัยกาฬสินธุ์</p><div className={auth?'notice':'error'}>{error}</div>{auth?<Button asChild><a href={'/signin-with-chatgpt?return_to='+encodeURIComponent(typeof window!=='undefined'?location.pathname+location.search:'/')} target="_top">เข้าสู่ระบบ</a></Button>:<Button onClick={reload}><RefreshCw size={16}/>ลองอีกครั้ง</Button>}</div>;
+ if(!data)return <div className="loading-box panel" style={{ maxWidth: '440px', margin: '80px auto', padding: '32px' }}>
+    <div className="brand" style={{ padding: '0 0 20px 0', borderBottom: '1px solid #dfe5ef', marginBottom: '20px' }}>
+      <div className="brand-icon"><Package size={28} color="#fff"/></div>
+      <div>
+        <strong style={{ fontSize: '18px', display: 'block' }}>ระบบบริหารจัดการครุภัณฑ์</strong>
+        <small style={{ color: '#60718b' }}>คณะวิศวกรรมศาสตร์และเทคโนโลยีอุตสาหกรรม</small>
+      </div>
+    </div>
+    {error && <div className="error mb-4">{error}</div>}
+    <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div>
+        <label style={{ fontSize: '13px', color: '#51647f', display: 'block', marginBottom: '6px' }}>อีเมล / บัญชีผู้ใช้</label>
+        <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@ksu.ac.th" required />
+      </div>
+      <div>
+        <label style={{ fontSize: '13px', color: '#51647f', display: 'block', marginBottom: '6px' }}>รหัสผ่าน</label>
+        <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
+      </div>
+      <Button type="submit" disabled={loggingIn} style={{ width: '100%', marginTop: '6px' }}>
+        {loggingIn ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}
+      </Button>
+    </form>
+    <div style={{ marginTop: '16px', fontSize: '12px', color: '#8899ac', textAlign: 'center' }}>
+      เข้าใช้งานครั้งแรก ระบบจะกำหนดบัญชีนี้เป็น <b>Admin</b> ทันที
+    </div>
+  </div>;
  const heading=nav.find(x=>x[0]===view)?.[1];
  return <SidebarProvider style={{'--sidebar-width':'252px'} as React.CSSProperties}><Sidebar><SidebarHeader className="p-0"><div className="brand"><div className="brand-icon"><Package size={24}/></div><div><strong>ครุภัณฑ์</strong><small>KSU · ASSET MANAGEMENT</small></div></div></SidebarHeader><SidebarContent className="px-3"><div className="nav-caption">พื้นที่ทำงาน</div><SidebarMenu>{nav.filter(x=>x[0]!=='users'||data.me.role==='admin').map(([key,label,Icon])=><SidebarMenuItem key={key}><SidebarMenuButton className="nav-item" isActive={view===key} onClick={()=>switchView(key)}><Icon/><span>{label}</span>{key==='requests'&&pending.length>0&&<span className="ml-auto text-xs">{pending.length}</span>}</SidebarMenuButton></SidebarMenuItem>)}</SidebarMenu><div className="mt-auto p-4"><div className="text-xs text-slate-400 mb-2">มาตรฐานทะเบียน</div><div className="flex gap-2 items-center text-sm"><ShieldCheck size={17}/>11 คอลัมน์ · ตรวจสอบย้อนหลัง</div></div></SidebarContent><SidebarFooter className="sidebar-footer"><b>มหาวิทยาลัยกาฬสินธุ์</b>คณะวิศวกรรมศาสตร์และ<br/>เทคโนโลยีอุตสาหกรรม</SidebarFooter></Sidebar>
- <SidebarInset className="app-main"><header className="topbar"><div className="topbar-left"><SidebarTrigger/><b>ทะเบียนกลาง</b><ChevronRight size={14} className="text-slate-400"/><small className="faculty">{heading}</small></div><div className="identity"><span className="avatar">{data.me.name.slice(0,1).toUpperCase()}</span><div>{data.me.name}<small>{roles[data.me.role as Role]}</small></div><Button variant="ghost" size="icon" asChild><a href="/signout-with-chatgpt?return_to=/" target="_top" aria-label="ออกจากระบบ"><LogOut size={17}/></a></Button></div></header>
+ <SidebarInset className="app-main"><header className="topbar"><div className="topbar-left"><SidebarTrigger/><b>ทะเบียนกลาง</b><ChevronRight size={14} className="text-slate-400"/><small className="faculty">{heading}</small></div><div className="identity"><span className="avatar">{data.me.name.slice(0,1).toUpperCase()}</span><div>{data.me.name}<small>{roles[data.me.role as Role]}</small></div><Button variant="ghost" size="icon" onClick={handleLogout} aria-label="ออกจากระบบ"><LogOut size={17}/></Button></div></header>
  <main className="workspace"><div className="page-heading"><div><div className="eyebrow">คณะวิศวกรรมศาสตร์และเทคโนโลยีอุตสาหกรรม</div><h1>{heading}</h1><p>{({registry:'ทะเบียนมาตรฐาน 11 คอลัมน์ เชื่อมโยงรายการกับข้อมูลต้นฉบับ',overview:'สถานะครุภัณฑ์และรายการที่รอดำเนินการ',imports:'ตรวจสอบข้อมูลจาก Excel ก่อนเพิ่มเข้าสู่ทะเบียนกลาง',requests:'ติดตามคำขอตามลำดับการอนุมัติ',stocktakes:'ตรวจสอบรายการจริงและเก็บผลแยกตามปีงบประมาณ',reports:'มูลค่า สถานะ และอายุใช้งานจากรายการในทะเบียน',users:'กำหนดสิทธิ์การทำงานให้ผู้ใช้ทั้ง 5 กลุ่ม',audit:'ผู้ดำเนินการ เวลา และรายละเอียดการเปลี่ยนแปลง'} as Any)[view]}</p></div><div className="actions">{view==='registry'&&<><Button variant="outline" disabled={busy||!filtered.length} onClick={()=>exportRows(filtered)}><Download size={16}/>ส่งออก Excel</Button>{editable&&<Button onClick={()=>open('create')}><Plus size={17}/>เพิ่มครุภัณฑ์</Button>}</>}{view==='stocktakes'&&editable&&<Button onClick={()=>open('round')}><Plus size={17}/>เปิดรอบตรวจนับ</Button>}{view==='users'&&<Button onClick={()=>open('user')}><Plus size={17}/>เพิ่มผู้ใช้</Button>}</div></div>{error&&<div className="error">{error}</div>}
  {['registry','overview','reports'].includes(view)&&<div className="metric-grid"><Metric label="รายการในทะเบียน" value={active.length.toLocaleString('th-TH')} note={quantity.toLocaleString('th-TH')+' หน่วย · เฉพาะรายการที่ยังถือครอง'} icon={Package}/><Metric label="มูลค่าครุภัณฑ์" value={money(total)} note="บาท · มูลค่าทุนตามทะเบียน" icon={Coins}/><Metric label="ครุภัณฑ์ชำรุด" value={damaged.toLocaleString('th-TH')} note="หน่วย · ยังรวมในมูลค่าที่ถือครอง" icon={TriangleAlert}/><Metric label="รอการอนุมัติ" value={pending.length} note="คำขอโอนย้าย ซ่อม และจำหน่าย" icon={FileCheck2}/></div>}
  {['registry','overview'].includes(view)&&!active.length&&<div className="import-banner"><FileSpreadsheet size={34}/><div><b>ไฟล์ต้นฉบับพร้อมตรวจสอบแล้ว</b><p>Excel ปีงบประมาณ 2569 · 18 ชีต · 4,312 แถวต้นทาง</p></div><Button onClick={()=>switchView('imports')}>ตรวจสอบและนำเข้า<ArrowRight size={16}/></Button></div>}
