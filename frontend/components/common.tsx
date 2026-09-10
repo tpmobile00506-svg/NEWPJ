@@ -19,9 +19,7 @@ export async function api(params = '', body?: Any | FormData) {
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
-    const err = new Error(response.status === 401 ? 'กรุณาเข้าสู่ระบบ' : `การเชื่อมต่อขัดข้อง (${response.status})`) as Error & { status: number };
-    err.status = response.status;
-    throw err;
+    data = {};
   }
   if (!response.ok) {
     const e = new Error(data?.error || 'ไม่สามารถเชื่อมต่อได้') as Error & { status: number };

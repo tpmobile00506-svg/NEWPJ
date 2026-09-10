@@ -24,17 +24,11 @@ export default function Workspace(){
       try {
         result = text ? JSON.parse(text) : {};
       } catch {
-        try {
-          const hRes = await fetch('/api/health');
-          const hData = (await hRes.json()) as Any;
-          if (hData?.tip) throw new Error(hData.tip);
-          if (hData?.dbError) throw new Error(`ฐานข้อมูลขัดข้อง: ${hData.dbError}`);
-        } catch (hErr: any) {
-          if (hErr.message && !hErr.message.includes('fetch')) throw hErr;
-        }
-        throw new Error('ระบบยังไม่สามารถติดต่อฐานข้อมูลได้ กรุณาตรวจสอบ DATABASE_URL ใน Vercel');
+        result = {};
       }
-      if (!res.ok) throw new Error(result.error || 'เข้าสู่ระบบไม่สำเร็จ');
+      if (!res.ok) {
+        throw new Error(result.error || (res.status === 401 ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' : `เข้าสู่ระบบไม่สำเร็จ (${res.status}): กรุณาตรวจสอบการตั้งค่า DATABASE_URL บน Vercel`));
+      }
       await reload();
     } catch (err: any) {
       setError(err.message || 'เข้าสู่ระบบไม่สำเร็จ');
