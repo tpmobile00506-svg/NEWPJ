@@ -50,8 +50,21 @@ export async function freshMember(tx: Transaction, member: Member): Promise<Memb
 }
 export function checkOrigin(request: Request) {
   const origin = request.headers.get('origin');
-  const reqOrigin = new URL(request.url).origin;
-  if ((origin && origin !== settings.frontendOrigin && origin !== reqOrigin) || request.headers.get('sec-fetch-site') === 'cross-site') {
+  if (!origin) return;
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  const proto = request.headers.get('x-forwarded-proto') || 'https';
+  const currentOrigin = host ? `${proto}://${host}` : new URL(request.url).origin;
+  if (
+    origin === currentOrigin ||
+    origin === settings.frontendOrigin ||
+    origin === new URL(request.url).origin ||
+    origin.endsWith('.vercel.app') ||
+    origin.includes('localhost') ||
+    origin.includes('127.0.0.1')
+  ) {
+    return;
+  }
+  if (request.headers.get('sec-fetch-site') === 'cross-site') {
     throw new ApiError('ต้นทางคำขอไม่ถูกต้อง', 403);
   }
 }

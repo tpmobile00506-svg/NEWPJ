@@ -19,7 +19,13 @@ export default function Workspace(){
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      const result = await res.json() as Any;
+      const text = await res.text();
+      let result: Any = {};
+      try {
+        result = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(`การเข้าสู่ระบบขัดข้อง (${res.status}): กรุณาตรวจสอบการตั้งค่าฐานข้อมูล DATABASE_URL`);
+      }
       if (!res.ok) throw new Error(result.error || 'เข้าสู่ระบบไม่สำเร็จ');
       await reload();
     } catch (err: any) {

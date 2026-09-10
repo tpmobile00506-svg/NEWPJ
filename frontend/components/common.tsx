@@ -8,6 +8,27 @@ export function Pick({value,onChange,options,label,name}:{value?:string;onChange
 export function Empty({title,children}:{title:string;children?:ReactNode}){return <div className="empty-state"><ClipboardList size={40}/><h3>{title}</h3>{children}</div>}
 export function Metric({label,value,note,icon:Icon}:{label:string;value:string|number;note:string;icon:any}){return <div className="metric"><div className="label">{label}<Icon/></div><div className="value">{value}</div><small>{note}</small></div>}
 export function Pager({page,total,size=40,onChange}:{page:number;total:number;size?:number;onChange:(n:number)=>void}){return <div className="table-footer"><span>{total?((page*size+1)+'–'+Math.min((page+1)*size,total)):'0'} จาก {total.toLocaleString('th-TH')} รายการ</span><Pagination><PaginationContent><PaginationItem><Button variant="outline" size="sm" disabled={page===0} onClick={()=>onChange(page-1)}>ก่อนหน้า</Button></PaginationItem><PaginationItem><span className="px-3">{page+1} / {Math.max(1,Math.ceil(total/size))}</span></PaginationItem><PaginationItem><Button variant="outline" size="sm" disabled={(page+1)*size>=total} onClick={()=>onChange(page+1)}>ถัดไป</Button></PaginationItem></PaginationContent></Pagination></div>}
-export async function api(params='',body?:Any|FormData){const response=await fetch('/api/data'+params,{method:body?'POST':'GET',headers:body instanceof FormData?undefined:body?{'Content-Type':'application/json'}:undefined,body:body?(body instanceof FormData?body:JSON.stringify(body)):undefined});const data=await response.json() as Any;if(!response.ok){const e=new Error(data.error||'ไม่สามารถเชื่อมต่อได้') as Error&{status:number};e.status=response.status;throw e;}return data;}
+export async function api(params = '', body?: Any | FormData) {
+  const response = await fetch('/api/data' + params, {
+    method: body ? 'POST' : 'GET',
+    headers: body instanceof FormData ? undefined : body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
+  });
+  let data: Any = {};
+  const text = await response.text();
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    const err = new Error(response.status === 401 ? 'กรุณาเข้าสู่ระบบ' : `การเชื่อมต่อขัดข้อง (${response.status})`) as Error & { status: number };
+    err.status = response.status;
+    throw err;
+  }
+  if (!response.ok) {
+    const e = new Error(data?.error || 'ไม่สามารถเชื่อมต่อได้') as Error & { status: number };
+    e.status = response.status;
+    throw e;
+  }
+  return data;
+}
 export function Activity({event:e}:{event:Any}){return <div className="activity"><div className="activity-icon"><History size={17}/></div><div><b>{e.action}</b><p>{e.actorName}{e.reason?' · '+e.reason:''}</p><small>{date(e.createdAt)}</small></div></div>}
 

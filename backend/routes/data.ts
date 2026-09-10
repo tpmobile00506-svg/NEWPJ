@@ -5,12 +5,20 @@ import { mutate } from '@/backend/services/asset-mutations';
 export const dynamic = 'force-dynamic';
 
 function fail(e: unknown) {
-  if (e instanceof ApiError) return Response.json({ error: e.message }, { status: e.status });
+  const status = (e && typeof e === 'object' && 'status' in e && typeof (e as any).status === 'number')
+    ? (e as any).status
+    : (e instanceof ApiError ? e.status : 500);
   const msg = e instanceof Error ? e.message : String(e);
-  console.error(msg);
-  if (/UNIQUE|CHECK constraint/.test(msg)) return Response.json({ error: 'ข้อมูลซ้ำ หรือมีผู้อื่นแก้ไขแล้ว กรุณาโหลดข้อมูลใหม่และตรวจสอบอีกครั้ง' }, { status: 409 });
-  return Response.json({ error: 'บันทึกไม่สำเร็จ ระบบยังเก็บข้อมูลที่กรอกไว้ กรุณาลองใหม่' }, { status: 503 });
+  if (status === 401 || status === 403 || e instanceof ApiError) {
+    return Response.json({ error: msg }, { status: status || 401 });
+  }
+  console.error('API Error:', msg);
+  if (/UNIQUE|CHECK constraint/.test(msg)) {
+    return Response.json({ error: 'ข้อมูลซ้ำ หรือมีผู้อื่นแก้ไขแล้ว กรุณาโหลดข้อมูลใหม่และตรวจสอบอีกครั้ง' }, { status: 409 });
+  }
+  return Response.json({ error: msg || 'เกิดข้อผิดพลาดในการประมวลผล' }, { status });
 }
+
 
 export async function GET(request: Request) {
   try {

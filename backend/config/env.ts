@@ -3,7 +3,8 @@ import { config } from 'dotenv';
 
 config({ path: resolve(process.cwd(), '.env'), quiet: true });
 
-const origin = process.env.FRONTEND_ORIGIN || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const vercelOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
+const origin = process.env.FRONTEND_ORIGIN || process.env.NEXT_PUBLIC_SITE_URL || vercelOrigin || 'http://localhost:3000';
 let parsedOrigin = 'http://localhost:3000';
 try {
   parsedOrigin = new URL(origin).origin;

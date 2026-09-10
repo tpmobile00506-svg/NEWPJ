@@ -1,8 +1,30 @@
+import pg from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, Prisma } from '../generated/prisma/client';
 import { settings } from '../config/env';
 
-export const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: settings.databaseUrl }) });
+const connectionString = settings.databaseUrl || process.env.DATABASE_URL || '';
+const isRemote = connectionString.includes('neon.tech') ||
+                 connectionString.includes('sslmode=require') ||
+                 connectionString.includes('supabase') ||
+                 process.env.NODE_ENV === 'production';
+
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+
+function getPrismaClient() {
+  const pool = new pg.Pool({
+    connectionString: connectionString || undefined,
+    ssl: isRemote ? { rejectUnauthorized: false } : undefined,
+  });
+  return new PrismaClient({ adapter: new PrismaPg(pool) });
+}
+
+export const prisma = globalForPrisma.prisma ?? getPrismaClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
+
 export type Transaction = Prisma.TransactionClient;
 export { Prisma };
 
