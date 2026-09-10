@@ -4,12 +4,43 @@
 
 ## โครงสร้าง Frontend / Backend
 
-- frontend/ — หน้าจอ React, ตาราง 11 คอลัมน์, นำเข้า, ฟอร์ม, QR, ตรวจนับ, รายงาน และจัดการผู้ใช้
-- backend/ — API, ตรวจสิทธิ์, กฎธุรกิจ, ธุรกรรมฐานข้อมูล, schema และข้อมูลต้นฉบับ
-- shared/ — ชนิดข้อมูล, การคำนวณเงินเป็นสตางค์, การแยกรหัสช่วง และตัวอ่าน Excel
-- app/ — ตัวเชื่อม route ของ Next.js/Vinext เท่านั้น ส่งต่อการทำงานไป frontend และ backend
-- drizzle/ — ประวัติ migration ที่ใช้กับฐานข้อมูล
-- tests/ — ทดสอบกฎสำคัญผ่าน API และฐานข้อมูลจริงในพื้นที่ทดสอบแยก
+```text
+asset-manager/
+├── frontend/                 หน้าจอและไฟล์เว็บ
+│   ├── app/                  หน้าเว็บ layout และตัวเชื่อม route ของ framework
+│   ├── features/             inventory, imports, operations
+│   ├── components/           UI และส่วนประกอบที่ใช้ร่วมกัน
+│   ├── hooks/                React hooks
+│   ├── services/             ส่งออก Excel และพิมพ์
+│   ├── styles/               CSS และ vendor styles
+│   ├── public/               favicon และรูปที่เปิดผ่านเว็บได้
+│   ├── utils/                ตัวช่วย UI
+│   └── config/               การตั้งค่า Next.js และ PostCSS
+├── backend/                  การทำงานบน server
+│   ├── routes/               API รับส่งข้อมูลและไฟล์ต้นฉบับ
+│   ├── services/             กฎธุรกิจ สิทธิ์ และธุรกรรม
+│   ├── auth/                 ยืนยันตัวตน
+│   ├── db/                   schema, config และ migrations
+│   ├── imports/              อ่านและวิเคราะห์ Excel
+│   ├── data/                 ข้อมูลและไฟล์ต้นฉบับ
+│   ├── tests/                ทดสอบกฎสำคัญและ API
+│   └── types/                ชนิดข้อมูลสำหรับ server
+├── shared/                   ชนิดข้อมูลและกฎคำนวณที่ใช้ทั้งสองฝั่ง
+├── tooling/                  เครื่องมือ build, hosting และ scripts
+├── package.json              คำสั่งและ dependencies ของทั้งโครงการ
+├── package-lock.json         เวอร์ชัน dependencies ที่ติดตั้ง
+├── tsconfig.json             TypeScript และเส้นทาง import
+└── vite.config.ts            เชื่อม frontend, backend และ hosting
+```
+
+เริ่มแก้หน้าจอที่ `frontend/features/` และแก้ API ที่ `backend/routes/` / `backend/services/`
+ไฟล์ใน `frontend/app/api/` เป็นเพียงตัวส่งต่อ route ที่ framework ต้องใช้; การตรวจสิทธิ์ การอ่าน Excel และการเข้าฐานข้อมูลอยู่ใน backend
+
+ไฟล์ที่เครื่องมือสร้าง เช่น `node_modules/`, `dist/`, `.next/`, `.vinext/`, `.wrangler/` และ `.sites-runtime/` ไม่ใช่ source และไม่ต้องย้ายเข้า frontend หรือ backend
+บน Windows จะซ่อนโฟลเดอร์เหล่านี้หลัง build เพื่อให้มองเห็นโครงสร้างหลักง่ายขึ้น เปิดดูได้ผ่าน Explorer → View → Hidden items
+`.openai/` เก็บการตั้งค่า Sites จึงอยู่ที่ root ตามที่ hosting ต้องใช้
+
+รายละเอียดเพิ่มเติม: [Frontend](frontend/README.md), [Backend](backend/README.md), [Tooling](tooling/README.md)
 
 Frontend และ Backend แยก source ชัดเจน แต่รุ่นนี้รันด้วยคำสั่งเดียวและ origin เดียว ไม่ใช่บริการแยกสองพอร์ตในการใช้งานปกติ
 
@@ -66,7 +97,7 @@ Word เดิมเสนอ PostgreSQL + Prisma; รุ่นนี้ยั�
 
 ติดตั้ง schema ฐานข้อมูล local ครั้งแรก (อย่ารัน migration เดิมซ้ำ):
 
-    node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_cool_ender_wiggin.sql
+    node --import ./tooling/scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file backend/db/migrations/0000_cool_ender_wiggin.sql
 
 เริ่มพัฒนา:
 
@@ -81,11 +112,11 @@ Word เดิมเสนอ PostgreSQL + Prisma; รุ่นนี้ยั�
 
 ชุดทดสอบแยกฐานข้อมูลและพื้นที่ไฟล์จาก preview:
 
-    node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/test-state --file drizzle/0000_cool_ender_wiggin.sql
-    node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/test-state --ip 127.0.0.1 --port 5174 --inspector-port 0
+    node --import ./tooling/scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/test-state --file backend/db/migrations/0000_cool_ender_wiggin.sql
+    node --import ./tooling/scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/test-state --ip 127.0.0.1 --port 5174 --inspector-port 0
     npm test
 
-tests/critical-workflows.mjs ใช้ identity headers เฉพาะเซิร์ฟเวอร์ทดสอบ local เพื่อจำลองทั้ง 5 บทบาท ห้ามนำเซิร์ฟเวอร์ทดสอบนี้เปิดสาธารณะ
+backend/tests/critical-workflows.mjs ใช้ identity headers เฉพาะเซิร์ฟเวอร์ทดสอบ local เพื่อจำลองทั้ง 5 บทบาท ห้ามนำเซิร์ฟเวอร์ทดสอบนี้เปิดสาธารณะ
 
 ผ่านการทดสอบ: เงินและจำนวน Split Lot, แบ่งซ้ำพร้อมกัน, idempotency, แอร์สองรายการ, ลำดับอนุมัติ, ป้องกันโอนตรง, enum/date validation, ตรวจนับและปิดรอบ, อ่าน XLSX ฝั่ง server แทนข้อมูลที่ client ปลอม, ปฏิเสธ anonymous
 

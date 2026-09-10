@@ -33,16 +33,7 @@
         "./frontend/hooks/*"
       ],
       "@/lib/utils": [
-        "./shared/utils.ts"
-      ],
-      "@/lib/domain": [
-        "./shared/domain.ts"
-      ],
-      "@/lib/excel": [
-        "./frontend/lib/excel.ts"
-      ],
-      "@/lib/server": [
-        "./backend/server.ts"
+        "./frontend/utils/classnames.ts"
       ],
       "@/data/*": [
         "./backend/data/*"
@@ -51,7 +42,8 @@
     "types": [
       "node",
       "@cloudflare/workers-types"
-    ]
+    ],
+    "tsBuildInfoFile": "./.sites-runtime/typescript.tsbuildinfo"
   },
   "include": [
     "next-env.d.ts",
@@ -63,6 +55,8 @@
   ],
   "exclude": [
     "node_modules",
-    "examples"
+    "dist",
+    ".sites-runtime",
+    "tooling/reference"
   ]
 }
