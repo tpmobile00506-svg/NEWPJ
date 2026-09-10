@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID, scrypt as derive, timingSafeEqual, createHash } from 'node:crypto';
 import { promisify } from 'node:util';
-import { prisma, type Transaction } from '../db/client';
+import { prisma, checkDatabase, type Transaction } from '../db/client';
 import { settings } from '../config/env';
 import { ApiError } from '../services/errors';
 import type { Role } from '../../shared/domain';
@@ -38,6 +38,7 @@ export function sessionCookie(token: string, maxAge = duration) {
 export async function member(request: Request): Promise<Member> {
   const token = cookieValue(request);
   if (!token) throw new ApiError('กรุณาเข้าสู่ระบบ', 401);
+  await checkDatabase();
   const session = await prisma.session.findUnique({ where: { tokenHash: digest(token) }, include: { user: { select: publicUserFields } } });
   if (!session || session.expiresAt <= new Date()) throw new ApiError('กรุณาเข้าสู่ระบบอีกครั้ง', 401);
   if (!session.user.active) throw new ApiError('บัญชีนี้ถูกระงับสิทธิ์ กรุณาติดต่อ Admin', 403);
@@ -74,6 +75,8 @@ export async function login(request: Request) {
   const email = typeof data.email === 'string' ? data.email.trim().toLowerCase() : '';
   const password = typeof data.password === 'string' ? data.password : '';
   if (email.length > 200 || password.length > 128) throw new ApiError('อีเมลหรือรหัสผ่านไม่ถูกต้อง', 401);
+
+  await checkDatabase();
 
   // Auto-bootstrap initial admin if database is fresh and has no users
   try {

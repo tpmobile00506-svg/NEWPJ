@@ -24,7 +24,8 @@ export default function Workspace(){
       try {
         result = text ? JSON.parse(text) : {};
       } catch {
-        throw new Error(`การเข้าสู่ระบบขัดข้อง (${res.status}): กรุณาตรวจสอบการตั้งค่าฐานข้อมูล DATABASE_URL`);
+        const snippet = text.replace(/<[^>]*>/g, '').trim().slice(0, 100);
+        throw new Error(`การเข้าสู่ระบบขัดข้อง (${res.status}): ${snippet || 'กรุณาตรวจสอบการตั้งค่าฐานข้อมูล DATABASE_URL'}`);
       }
       if (!res.ok) throw new Error(result.error || 'เข้าสู่ระบบไม่สำเร็จ');
       await reload();

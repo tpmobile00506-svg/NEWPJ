@@ -2,6 +2,7 @@ import pg from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, Prisma } from '../generated/prisma/client';
 import { settings } from '../config/env';
+import { ensureDatabaseReady } from './init';
 
 const connectionString = settings.databaseUrl || process.env.DATABASE_URL || '';
 const isRemote = connectionString.includes('neon.tech') ||
@@ -9,20 +10,33 @@ const isRemote = connectionString.includes('neon.tech') ||
                  connectionString.includes('supabase') ||
                  process.env.NODE_ENV === 'production';
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const globalForDb = globalThis as unknown as {
+  prisma?: PrismaClient;
+  pgPool?: pg.Pool;
+};
+
+export const pool = globalForDb.pgPool ?? new pg.Pool({
+  connectionString: connectionString || undefined,
+  ssl: isRemote ? { rejectUnauthorized: false } : undefined,
+  connectionTimeoutMillis: 8000,
+});
+
+export async function checkDatabase() {
+  if (!connectionString) {
+    throw new Error('ยังไม่ได้กำหนด DATABASE_URL ใน Environment Variables บน Vercel กรุณาตรวจสอบการตั้งค่า');
+  }
+  await ensureDatabaseReady(pool);
+}
 
 function getPrismaClient() {
-  const pool = new pg.Pool({
-    connectionString: connectionString || undefined,
-    ssl: isRemote ? { rejectUnauthorized: false } : undefined,
-  });
   return new PrismaClient({ adapter: new PrismaPg(pool) });
 }
 
-export const prisma = globalForPrisma.prisma ?? getPrismaClient();
+export const prisma = globalForDb.prisma ?? getPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
+  globalForDb.prisma = prisma;
+  globalForDb.pgPool = pool;
 }
 
 export type Transaction = Prisma.TransactionClient;
